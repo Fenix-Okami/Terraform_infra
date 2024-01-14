@@ -52,6 +52,20 @@ module "security_group" {
       protocol    = "tcp"
       description = "Custom web interface"
       cidr_blocks = "0.0.0.0/0"
+    },
+    {
+      from_port   = 8888
+      to_port     = 8888
+      protocol    = "tcp"
+      description = "Jupyter Lab"
+      cidr_blocks = "0.0.0.0/0"
+    },
+    {
+      from_port   = 8501
+      to_port     = 8501
+      protocol    = "tcp"
+      description = "Streamlit"
+      cidr_blocks = "0.0.0.0/0"
     }
   ]
 
@@ -93,11 +107,31 @@ module "ec2_instance" {
 
   name           = "Terraform-instance"
   ami            = data.aws_ami.latest_ubuntu.id
-  instance_type  = "t2.micro"
+  instance_type  = "t3.medium"
   subnet_id      = module.vpc.public_subnets[0] # Replace with your subnet ID
+  key_name       = "Stream" # Replace with your key pair name
+  associate_public_ip_address = true
+  vpc_security_group_ids = [module.security_group.security_group_id]
+
+  # user_data = <<-EOF
+  #         #!/bin/bash
+  #         sudo apt-get update
+  #         sudo apt-get install -y python3-pip git
+  #         pip3 install jupyterlab
+  #         nohup jupyter lab --ip=0.0.0.0 --no-browser --allow-root &
+  #         git clone https://github.com/Fenix-Okami/algo.git
+  #         cd algo
+  #         pip3 install -r requirements.txt
+  #         nohup streamlit run your_streamlit_app.py &
+  #         EOF
 
   tags = {
     Terraform   = "true"
     Environment = "dev"
   }
+}
+
+output "instance_public_ip" {
+  description = "Public IP of the EC2 instance"
+  value       = module.ec2_instance.public_ip
 }
